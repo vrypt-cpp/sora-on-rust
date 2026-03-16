@@ -4,8 +4,8 @@ use wacore::types::events::Event;
 use wacore::proto_helpers::MessageExt;
 use whatsapp_rust::client::Client;
 use crate::commands::cmd::COMMANDS;
-
-pub async fn event_handler(event: Event, client: Arc<Client>) {
+use crate::config::AppConfig;
+pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppConfig>) {
     match event {
         Event::PairingCode { code, .. } => {
             info!("Pair with this code: {}", code);
@@ -15,8 +15,12 @@ pub async fn event_handler(event: Event, client: Arc<Client>) {
         }
         Event::Message(msg, info) => {
             if let Some(text) = msg.text_content() {
-                let prefix = "{";
-                if !text.starts_with(prefix) { return; }
+                let matched_prefix = config.prefixes.iter().find(|p| text.starts_with(*p));
+             let prefix = match matched_prefix {
+                Some(p) => p,
+                None => return,
+            };
+
 
                 let body = &text[prefix.len()..];
                 let args: Vec<&str> = body.split_whitespace().collect();
