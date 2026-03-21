@@ -6,6 +6,27 @@ use linkme::distributed_slice;
 use crate::state::AppState;
 use std::sync::Arc;
 
+pub struct Context {
+    pub client: Arc<Client>,
+    pub msg: Arc<Message>,
+    pub info: Arc<MessageInfo>,
+    pub state: Arc<AppState>,
+}
+
+impl Context {
+    pub async fn reply(&self, text: &str) -> anyhow::Result<()> {
+        crate::send_msg!(
+            self.client,
+            self.info,
+            self.state,
+            dst: self.info.source.chat,
+            text: text,
+            reply: true
+        )
+        .await?;
+        Ok(())
+    }
+}
 #[distributed_slice]
 pub static COMMANDS: [&(dyn Command + Sync)] = [..];
 
@@ -14,12 +35,12 @@ pub trait Command: Send + Sync {
     fn name(&self) -> &str;
     fn aliases(&self) -> &[&str];
     fn category(&self) -> &str;
-    async fn execute(&self, client: &Client, msg: &Message, info: &MessageInfo, state: &Arc<AppState>) -> anyhow::Result<()>;
+    async fn execute(&self, ctx: Context) -> anyhow::Result<()>;
 }
 
 #[macro_export]
 macro_rules! cmd {
-    ($struct_name:ident, name: $name:expr, aliases: [$($alias:expr),*], category: $cat:expr, execute: |$client:ident, $msg:ident, $info:ident, $state: ident| $body:block) => {
+    ($struct_name:ident, name: $name:expr, aliases: [$($alias:expr),*], category: $cat:expr, execute: |$ctx: ident| $body:block) => {
         pub struct $struct_name;
 
         #[async_trait::async_trait]
@@ -27,7 +48,7 @@ macro_rules! cmd {
             fn name(&self) -> &str { $name }
             fn aliases(&self) -> &[&str] { &[$($alias),*] }
             fn category(&self) -> &str { $cat }
-            async fn execute(&self, $client: &whatsapp_rust::client::Client, $msg: &waproto::whatsapp::Message, $info: &wacore::types::message::MessageInfo, $state: &std::sync::Arc<crate::state::AppState> ) -> anyhow::Result<()> {
+            async fn execute(&self, $ctx: crate::commands::cmd::Context ) -> anyhow::Result<()> {
                 $body;
                 Ok(())
             }

@@ -8,9 +8,6 @@ use crate::config::AppConfig;
 use crate::utils::MessageExt;
 pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppConfig>, state: Arc<AppState>) {
     match event {
-        Event::PairingCode { code, .. } => {
-            info!("Pair with this code: {}", code);
-        }
         Event::Connected(_) => {
             info!("✅ Bot connected successfully!");
         }
@@ -24,13 +21,23 @@ pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppCon
                 Some(p) => p,
                 None => return,
             };
+
+            let msg_arc = Arc::from(msg);
+            let info_arc = Arc::new(info);
                 let body = &text[prefix.len()..];
                 let args: Vec<&str> = body.split_whitespace().collect();
                 if args.is_empty() { return; }
                 let cmd_name = args[0].to_lowercase();
                 for cmd in COMMANDS {
                     if cmd.name() == cmd_name || cmd.aliases().contains(&cmd_name.as_str()) {
-                        if let Err(e) = cmd.execute(&client, &msg, &info, &state).await {
+                        let ctx = crate::commands::cmd::Context {
+                            client: Arc::clone(&client),
+                            msg: Arc::clone(&msg_arc),  
+                            info: Arc::clone(&info_arc),
+                            state: Arc::clone(&state),
+                        };
+                
+                        if let Err(e) = cmd.execute(ctx).await {
                             error!("Error executing {}: {}", cmd_name, e);
                         }
                         return;

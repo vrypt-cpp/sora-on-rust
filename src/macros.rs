@@ -1,5 +1,9 @@
 #[macro_export]
 macro_rules! send_msg {
+    ($ctx:expr, dst: $dst:expr, text: $text:expr, reply: $is_reply:expr) => {
+        $crate::send_msg!($ctx.client, $ctx.info, $ctx.state, dst: $dst, text: $text, reply: $is_reply)
+    };
+
     ($client:expr, $info:expr, $state:expr, dst: $dst:expr, text: $text:expr, reply: $is_reply:expr) => {{
         let mut context = waproto::whatsapp::ContextInfo::default();
         let expiration = $state.get_expiration(&$dst.to_string());
@@ -14,7 +18,7 @@ macro_rules! send_msg {
 
         let mentions: Vec<String> = $text
             .split_whitespace()
-            .filter(|word| word.starts_with('@') && word.len() > 10)
+            .filter(|word| word.starts_with('@') && word.len() > 1)
             .map(|m| format!("{}@s.whatsapp.net", &m[1..]))
             .collect();
         
