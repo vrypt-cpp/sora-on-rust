@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use whatsapp_rust::TokioRuntime;
 use whatsapp_rust::bot::Bot;
 use whatsapp_rust::store::SqliteStore;
 use whatsapp_rust_tokio_transport::TokioWebSocketTransportFactory;
@@ -22,6 +23,7 @@ pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow:
         .with_backend(backend)
         .with_transport_factory(TokioWebSocketTransportFactory::new())
         .with_http_client(UreqHttpClient::new())
+        .with_runtime(TokioRuntime)
         .with_pair_code(PairCodeOptions {
             phone_number: config.phone_number.clone(), 
             show_push_notification: true,
