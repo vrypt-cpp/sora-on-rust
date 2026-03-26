@@ -1,6 +1,7 @@
 use crate::cmd;
 use tokio::net::TcpStream;
 use std::time::Instant;
+use waproto::whatsapp as wa;
 
 cmd!(
     Ping,
@@ -13,8 +14,18 @@ cmd!(
         match TcpStream::connect(server_wangsaf).await {
             Ok(_) => {
                 let latency = start.elapsed();
-                ctx.reply(&format!("```Pong! {}ms```", latency.as_millis())).await?;
+                let ping = ctx.reply(&format!("```Pong!\n----------------------\nNetwork Latency: {}ms\nMessage Latency: Measuring...```", latency.as_millis())).await?;
+                let rtt = start.elapsed();
+                let final_text = wa::Message {
+                    conversation: Some(format!("```Pong!\n----------------------\nNetwork Latency: {}ms\nMessage Latency: {}ms```", latency.as_millis(), rtt.as_millis()).to_string()),
+                    ..Default::default()
+                };
 
+                ctx.client.edit_message(
+                    ctx.info.source.chat.clone(),
+                    ping,
+                    final_text
+                ).await?;
             }
             Err(e) => {
                 println!("Error connecting to {}: {}", server_wangsaf, e);
