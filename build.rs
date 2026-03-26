@@ -1,7 +1,15 @@
 use std::fs;
 use std::path::Path;
+use std::process::Command;
+
 
 fn main() {
+    if let Ok(output) = Command::new("rustc").arg("-V").output() {
+        if let Ok(version) = String::from_utf8(output.stdout) {
+            // Menyimpan hasilnya ke variabel environment RUSTC_VERSION
+            println!("cargo:rustc-env=RUSTC_VERSION={}", version.trim());
+        }
+    }
     let commands_path = Path::new("src/commands");
     let content = generate_mod_content(commands_path);
     let mod_file = commands_path.join("mod.rs");
