@@ -19,8 +19,8 @@ async fn main() -> anyhow::Result<()> {
             writeln!(buf, "{} [{}] - {}", Local::now().format("%H:%M:%S"), record.level(), record.args())
         })
         .init();
-        let config = Arc::new(config::AppConfig::load()?);
-        let state = state::AppState::load("session/chat_settings.json");
+    let config = Arc::new(config::AppConfig::load()?);
+    let state = state::AppState::load("session/chat_settings.json");
     let mut bot = client::create_bot(Arc::clone(&config), state).await?;
     info!("Starting Bot...");
     bot.run().await?.await?;
