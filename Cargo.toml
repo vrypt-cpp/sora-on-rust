@@ -24,3 +24,11 @@ toml = "1.1.0"
 dotenvy = "0.15.7"
 dashmap = { version = "6.1.0", features = ["serde"]}
 serde_json = "1.0.149"
+mimalloc = "0.1.48"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
