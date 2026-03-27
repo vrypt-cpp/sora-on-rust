@@ -2,7 +2,7 @@ use waproto::whatsapp::Message;
 
 pub trait MessageExt {
     fn get_expiration_timer(&self) -> Option<u32>;
-    fn text_content(&self) -> Option<String>;
+    fn text_content(&self) -> Option<&String>;
 }
 
 impl MessageExt for Message {
@@ -36,16 +36,16 @@ impl MessageExt for Message {
         context.map(|ctx| ctx.expiration.unwrap_or(0))
     }
 
-    fn text_content(&self) -> Option<String> {
-        if let Some(t) = &self.conversation { return Some(t.clone()); }
-        if let Some(m) = &self.extended_text_message { return m.text.clone(); }
-        if let Some(m) = &self.image_message { return m.caption.clone(); }
-        if let Some(m) = &self.video_message { return m.caption.clone(); }
-        if let Some(m) = &self.document_message { return m.caption.clone(); }        
+    fn text_content(&self) -> Option<&String> {
+        if let Some(t) = &self.conversation { return Some(t); }
+        if let Some(m) = &self.extended_text_message { return m.text.as_ref(); }
+        if let Some(m) = &self.image_message { return m.caption.as_ref(); }
+        if let Some(m) = &self.video_message { return m.caption.as_ref(); }
+        if let Some(m) = &self.document_message { return m.caption.as_ref(); }        
         if let Some(m) = &self.document_with_caption_message {
             return m.message.as_ref()
                 .and_then(|nested| nested.document_message.as_ref())
-                .and_then(|doc| doc.caption.clone());
+                .and_then(|doc| doc.caption.as_ref());
         }
        None
     }
