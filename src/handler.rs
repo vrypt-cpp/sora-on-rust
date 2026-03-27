@@ -1,4 +1,5 @@
 use log::{error, info};
+use wacore::stanza::GroupNotificationAction;
 use std::sync::Arc;
 use crate::state::AppState;
 use wacore::{client::context::SendContextResolver, types::events::Event};
@@ -26,20 +27,24 @@ pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppCon
         Event::Message(msg, info) => {
             // println!("{:#?}", msg);
             let start = std::time::Instant::now();
-            if let Some(exp) = msg.get_expiration_timer() {
-                state.set_expiration(&info.source.chat.to_string(), exp);
+            let msg_arc = Arc::new(*msg);
+            let info_arc = Arc::new(info);
+            if let Some(exp) = msg_arc.get_expiration_timer() {
+                state.set_expiration(&info_arc.source.chat.to_string(), exp);
+                println!("Expiration received: {}", exp);
             }
-            if let Some(text) = msg.text_content() {
-                let matched_prefix = config.prefixes.iter().find(|p| text.starts_with(*p));
-             let prefix = match matched_prefix {
+            
+            if let Some(text) = msg_arc.text_content() {
+            let matched_prefix = config.prefixes.iter().find(|p| text.starts_with(*p));
+            let prefix = match matched_prefix {
                 Some(p) => p,
                 None => return,
             };
             if config.mode == "self" {
-                let sender = &info.source.sender.user;
+                let sender = &info_arc.source.sender.user;
     
-                let me = info.source.is_from_me;
-                let su = if info.source.sender.is_lid() {
+                let me = info_arc.source.is_from_me;
+                let su = if info_arc.source.sender.is_lid() {
                     if let Ok(lock) = SUPERUSER_LID.try_read() {
                         lock.as_deref() == Some(sender.as_str())
                     } else {
@@ -53,14 +58,12 @@ pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppCon
                     return;
                 }
             }
-            let msg_arc = Arc::from(msg);
-            let info_arc = Arc::new(info);
                 let body = &text[prefix.len()..];
                 let args: Vec<&str> = body.split_whitespace().collect();
                 if args.is_empty() { return; }
-                let cmd_name = args[0].to_lowercase();
+                let cmd_name = args[0];
                 for cmd in COMMANDS {
-                    if cmd.name() == cmd_name || cmd.aliases().contains(&cmd_name.as_str()) {
+                    if cmd.name().eq_ignore_ascii_case(cmd_name) || cmd.aliases().iter().any(|&alias| alias.eq_ignore_ascii_case(cmd_name)) {
                         let ctx = crate::commands::cmd::Context {
                             client: Arc::clone(&client),
                             msg: Arc::clone(&msg_arc),  
@@ -77,6 +80,15 @@ pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppCon
             
             let duration = start.elapsed();
             println!("Executed in {:?}", duration);
+        }
+        Event::GroupUpdate(update) => {
+            match &update.action {
+                GroupNotificationAction::Ephemeral{expiration, trigger: _} => {
+                    println!("Group JID {}", &update.group_jid.user_base());
+                    state.set_expiration(&update.group_jid.user_base(), *expiration);
+                }
+                _ => {}
+            }
         }
         _ => {}
     }
