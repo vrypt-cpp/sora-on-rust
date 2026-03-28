@@ -1,10 +1,11 @@
 use async_trait::async_trait;
+use std::sync::LazyLock;
 use whatsapp_rust::client::Client;
 use wacore::types::message::MessageInfo;
 use waproto::whatsapp::Message;
 use linkme::distributed_slice;
 use crate::state::AppState;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct Context {
     pub client: Arc<Client>,
@@ -59,3 +60,15 @@ macro_rules! cmd {
         static COMMAND: &(dyn crate::commands::cmd::Command + Sync) = &$struct_name;
     };
 }
+
+
+pub static COMMAND_MAP: LazyLock<HashMap<String, &'static (dyn Command + Sync)>> = LazyLock::new(|| {
+    let mut map = HashMap::with_capacity(COMMANDS.len() * 2);
+    for &cmd in COMMANDS {
+        map.insert(cmd.name().to_lowercase(), cmd);
+        for alias in cmd.aliases() {
+            map.insert(alias.to_lowercase(), cmd);
+        }
+    }
+    map
+});
