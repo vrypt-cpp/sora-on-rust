@@ -1,8 +1,10 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::Mutex;
 
 use crate::config::AppConfig;
 
@@ -16,6 +18,7 @@ pub struct AppState {
     pub file_path: String,
     pub start_time: Instant,
     pub config: AppConfig,
+    file_lock: Mutex<()>,
 }
 
 impl AppState {
@@ -33,25 +36,33 @@ impl AppState {
             file_path,
             start_time,
             config,
+            file_lock: Mutex::new(()),
         })
-    }
+    }    
 
-    pub fn set_expiration(&self, jid: &str, exp: u32) {
-    self.settings.entry(jid.to_string())
-            .and_modify(|s| s.expiration = exp)
-            .or_insert(ChatSettings { expiration: exp });
-        let file_path = self.file_path.clone();        
-        let settings_snapshot: std::collections::HashMap<String, ChatSettings> = 
-            self.settings.iter().map(|entry| (entry.key().clone(), entry.value().clone())).collect();
+    pub async fn set_expiration(self: Arc<Self>, jid: String, expiration: u32) {
+        if let Some(current) = self.settings.get(&jid) {
+            if current.expiration == expiration {
+                return;
+            }
+        }
+        self.settings.insert(jid, ChatSettings { expiration });
+        let state_clone = Arc::clone(&self);
         tokio::spawn(async move {
-            if let Ok(data) = serde_json::to_string_pretty(&settings_snapshot) {
-                if let Err(e) = std::fs::write(file_path, data) {
-                    eprintln!("Unable to save JSON: {}", e);
+            let _lock = state_clone.file_lock.lock().await;
+            
+            let snapshot: HashMap<String, ChatSettings> = state_clone.settings
+                .iter()
+                .map(|r| (r.key().clone(), r.value().clone()))
+                .collect();
+
+            if let Ok(json) = serde_json::to_string_pretty(&snapshot) {
+                if let Err(e) = tokio::fs::write(&state_clone.file_path, json).await {
+                    log::error!("Unable to save state: {}", e);
                 }
             }
-        });        
+        });
     }
-
     pub fn get_expiration(&self, jid: &str) -> u32 {
         self.settings.get(jid).map(|s| s.expiration).unwrap_or(0)
     }
