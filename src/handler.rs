@@ -102,7 +102,7 @@ async fn is_privileged(sender: &str, info_arc: &Arc<MessageInfo>, config: &Arc<A
 
     let privileged = me || su;
     if !privileged {
-        false;
+        return false;
     }
     true
 }
