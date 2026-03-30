@@ -1,4 +1,4 @@
-use std::fs;
+use tokio::fs;
 use std::path::Path;
 use std::sync::Arc;
 use whatsapp_rust::TokioRuntime;
@@ -14,7 +14,7 @@ pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow:
 
     let db_path = Path::new(&config.db_path);
     if let Some(parent) = db_path.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).await?;
         log::info!("Ensured directory {:?} exists", parent);
     }
     let backend = Arc::new(SqliteStore::new(&config.db_path).await?);
@@ -29,7 +29,7 @@ pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow:
             show_push_notification: true,
             custom_code: Some(config.custom_code.clone()),
             platform_id: PlatformId::Chrome,
-            platform_display: "Chrome (Linux)".to_string(),
+            platform_display: String::from("Chrome (Linux)"),
         })
         .on_event(move |event, client| {
             let st = Arc::clone(&state);
