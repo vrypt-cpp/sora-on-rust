@@ -22,8 +22,8 @@ async fn main() -> anyhow::Result<()> {
         })
         .init();
     let config = Arc::new(config::AppConfig::load()?);
-    let state = state::AppState::load("session/chat_settings.json");
-    let mut bot = client::create_bot(Arc::clone(&config), state).await?;
+    let state = state::AppState::load(config.clone());
+    let mut bot = client::create_bot(config, state).await?;
     info!("Starting Bot...");
     bot.run().await?.await?;
     Ok(())
