@@ -17,25 +17,24 @@ pub struct AppState {
     pub settings: DashMap<String, ChatSettings>,
     pub file_path: String,
     pub start_time: Instant,
-    pub config: AppConfig,
+    pub config: Arc<AppConfig>,
     file_lock: Mutex<()>,
 }
 
 impl AppState {
-    pub fn load(path: &str) -> Arc<Self> {
+    pub fn load(config: Arc<AppConfig>) -> Arc<Self> {
         let start_time = Instant::now();
-        let file_path = path.to_string();        
+        let file_path = String::from("session/chat_settings.json");        
         let settings = if let Ok(data) = fs::read_to_string(&file_path) {
             serde_json::from_str(&data).unwrap_or_else(|_| DashMap::new())
         } else {
             DashMap::new()
         };
-        let config = AppConfig::load().unwrap();
         Arc::new(Self {
             settings,
             file_path,
             start_time,
-            config,
+            config: config,
             file_lock: Mutex::new(()),
         })
     }    
