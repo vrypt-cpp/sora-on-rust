@@ -10,13 +10,14 @@ use crate::config::AppConfig;
 use crate::utils::MessageExt;
 use tokio::sync::RwLock;
 use std::sync::LazyLock;
+use chrono::Utc;
 
 static SUPERUSER_LID: LazyLock<RwLock<Option<String>>> = LazyLock::new(|| RwLock::new(None));
 
 pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppConfig>, state: Arc<AppState>) {
     match event {
         Event::Connected(_) => handle_connected(config, client).await,
-        Event::Message(msg, info) => handle_message(msg, client, config, info, state).await,
+        Event::Message(msg, info) => handle_message(*msg, client, config, info, state).await,
         Event::GroupUpdate(update) => handle_group_exp(update, state).await,
         _ => {}
     }
@@ -26,19 +27,36 @@ pub async fn event_handler(event: Event, client: Arc<Client>, config: Arc<AppCon
 async fn handle_connected(config: Arc<AppConfig>, client: Arc<Client>) {
     info!("✅ Bot connected successfully!");
     if let Some(su_pn) = &config.superuser {
-        if let Some(jid) = client.get_lid_for_phone(su_pn).await {
-            let lid_user = jid.to_string();
+        let mut found_lid = client.get_lid_for_phone(su_pn).await.map(|j| j.to_string());
+        println!("{:?}",&found_lid);
+        if found_lid.is_none() {
+            match client.contacts().get_info(&[su_pn.as_str()]).await {
+                Ok(contacts) => {
+                    if let Some(contact) = contacts.into_iter().next() {
+                        if let Some(lid) = contact.lid {
+                            found_lid = Some(lid.user);
+                            println!("{:?}",&found_lid);
+                        }
+                    }
+                }
+                Err(e) => log::error!("Unable retrieve contact info from server: {}", e),
+            }
+        }
+        println!("{:?}",&found_lid);
+        if let Some(lid) = found_lid {
             
             let mut lock = SUPERUSER_LID.write().await;
-            *lock = Some(lid_user.clone());
+            *lock = Some(lid);
+        } else {
+            log::warn!("Unable to get LID for superuser: {}", su_pn);
         }
     }
 }
 
-async fn handle_message(msg: Box<waproto::whatsapp::Message>, client: Arc<Client>, config: Arc<AppConfig>, info: MessageInfo, state: Arc<AppState> ) {
+async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, config: Arc<AppConfig>, info: MessageInfo, state: Arc<AppState> ) {
             // println!("{:#?}", msg);
             let start = std::time::Instant::now();
-            let msg_arc = Arc::new(*msg);
+            let msg_arc = Arc::from(msg);
             let info_arc = Arc::new(info);
             if let Some(exp) = msg_arc.get_expiration_timer() {
                 state.clone().set_expiration(info_arc.source.chat.to_string(), exp).await;
@@ -53,13 +71,17 @@ async fn handle_message(msg: Box<waproto::whatsapp::Message>, client: Arc<Client
                 };
                 if config.mode == "self" {
                     if !is_privileged(info_arc.source.sender.user.as_str(), &info_arc, &config).await {
+                        println!("{}", &info_arc.source.sender.user);
+                        println!("Not privileged");
                         return;
                     }
                 }
-
+                println!("{}", &info_arc.source.sender.user);
                 let body = text.strip_prefix(prefix).unwrap_or(text);
                 let args: Vec<&str> = body.split_whitespace().collect();
                 if args.is_empty() { return; }
+                let msg_timestamp = Utc::now() - &info_arc.timestamp;
+                if &msg_timestamp.to_std().unwrap_or_default() > &state.start_time.elapsed() {return;}
                 let cmd_name = args[0];
                 if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name.to_ascii_lowercase()) {
                     let ctx = crate::commands::cmd::Context {
@@ -97,7 +119,7 @@ async fn is_privileged(sender: &str, info_arc: &Arc<MessageInfo>, config: &Arc<A
         false
     }
     } else {
-        config.superuser == Some(sender.to_string())
+        config.superuser.as_deref() == Some(sender)
     };
 
     let privileged = me || su;
