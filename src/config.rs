@@ -4,7 +4,7 @@ use std::fs;
 #[derive(Deserialize, Clone)]
 pub struct AppConfig {
     pub prefixes: Vec<String>,
-    pub db_path: String,
+    pub session_path: String,
     pub custom_code: String,
     pub mode: String,
     #[serde(skip)]

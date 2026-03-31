@@ -10,14 +10,14 @@ use wacore::pair_code::{PairCodeOptions, PlatformId};
 use crate::handler::event_handler;
 use crate::state::AppState;
 use crate::config::AppConfig;
-pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow::Result<Bot> {
 
-    let db_path = Path::new(&config.db_path);
+pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow::Result<Bot> {
+    let db_path = Path::new(&config.session_path);
     if let Some(parent) = db_path.parent() {
         fs::create_dir_all(parent).await?;
         log::info!("Ensured directory {:?} exists", parent);
     }
-    let backend = Arc::new(SqliteStore::new(&config.db_path).await?);
+    let backend = Arc::new(SqliteStore::new(&config.session_path).await?);
     let bot = Bot::builder()
         .skip_history_sync()
         .with_backend(backend)
