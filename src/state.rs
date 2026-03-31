@@ -1,10 +1,7 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::Mutex;
 
 use crate::config::AppConfig;
 
@@ -15,27 +12,35 @@ pub struct ChatSettings {
 
 pub struct AppState {
     pub settings: DashMap<String, ChatSettings>,
-    pub file_path: String,
+    pub db: sled::Db,
     pub start_time: Instant,
     pub config: Arc<AppConfig>,
-    file_lock: Mutex<()>,
 }
 
 impl AppState {
     pub fn load(config: Arc<AppConfig>) -> Arc<Self> {
         let start_time = Instant::now();
-        let file_path = String::from("session/chat_settings.json");        
-        let settings = if let Ok(data) = fs::read_to_string(&file_path) {
-            serde_json::from_str(&data).unwrap_or_else(|_| DashMap::new())
-        } else {
-            DashMap::new()
-        };
+        let db = sled::open("database/chat").expect("Error opening sled database");
+        let settings = DashMap::new();
+
+        // hydration from db to cache
+        for item in db.iter() {
+            if let Ok((key, value)) = item {
+                let jid = String::from_utf8_lossy(&key).to_string();
+
+                if value.len() == 4 {
+                    let bytes: [u8; 4] = value.as_ref().try_into().unwrap();
+                    let expiration = u32::from_be_bytes(bytes);
+                    settings.insert(jid, ChatSettings { expiration });
+                }
+            }
+        }
+
         Arc::new(Self {
             settings,
-            file_path,
+            db,
             start_time,
             config: config,
-            file_lock: Mutex::new(()),
         })
     }    
 
@@ -45,20 +50,13 @@ impl AppState {
                 return;
             }
         }
+        let jid_db = jid.clone();
         self.settings.insert(jid, ChatSettings { expiration });
         let state_clone = Arc::clone(&self);
         tokio::spawn(async move {
-            let _lock = state_clone.file_lock.lock().await;
-            
-            let snapshot: HashMap<String, ChatSettings> = state_clone.settings
-                .iter()
-                .map(|r| (r.key().clone(), r.value().clone()))
-                .collect();
-
-            if let Ok(json) = serde_json::to_string_pretty(&snapshot) {
-                if let Err(e) = tokio::fs::write(&state_clone.file_path, json).await {
-                    log::error!("Unable to save state: {}", e);
-                }
+            let val_bytes = expiration.to_be_bytes();
+            if let Err(e) = state_clone.db.insert(jid_db, &val_bytes) {
+                log::error!("Error inserting data into sled database: {}", e);
             }
         });
     }
