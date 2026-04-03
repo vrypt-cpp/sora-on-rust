@@ -55,39 +55,37 @@ async fn handle_connected(config: Arc<AppConfig>, client: Arc<Client>) {
 
 async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, config: Arc<AppConfig>, info: MessageInfo, state: Arc<AppState> ) {
             // println!("{:#?}", msg);
-            let start = std::time::Instant::now();
-            let msg_arc = Arc::from(msg);
-            let info_arc = Arc::new(info);
-            if let Some(exp) = msg_arc.get_expiration_timer() {
-                state.clone().set_expiration(info_arc.source.chat.to_string(), exp).await;
+            // let start = std::time::Instant::now();
+            if let Some(exp) = msg.get_expiration_timer() {
+                state.clone().set_expiration(info.source.chat.to_string(), exp).await;
                 println!("Expiration received: {}", exp);
             }
             
-            if let Some(text) = msg_arc.text_content() {
-                let matched_prefix = config.prefixes.iter().find(|p| text.starts_with(*p));
+            if let Some(text) = msg.text_content() {
+                let matched_prefix: Option<&String> = config.prefixes.iter().find(|p| text.starts_with(*p));
                 let prefix = match matched_prefix {
                     Some(p) => p,
                     None => return,
                 };
                 if config.mode == "self" {
-                    if !is_privileged(info_arc.source.sender.user.as_str(), &info_arc, &config).await {
-                        println!("{}", &info_arc.source.sender.user);
+                    if !is_privileged(info.source.sender.user.as_str(), &info, &config).await {
+                        println!("{}", &info.source.sender.user);
                         println!("Not privileged");
                         return;
                     }
                 }
-                println!("{}", &info_arc.source.sender.user);
+                // println!("{}", &info_arc.source.sender.user);
                 let body = text.strip_prefix(prefix).unwrap_or(text);
                 let args: Vec<&str> = body.split_whitespace().collect();
                 if args.is_empty() { return; }
-                let msg_timestamp = Utc::now() - &info_arc.timestamp;
+                let msg_timestamp = Utc::now() - &info.timestamp;
                 if &msg_timestamp.to_std().unwrap_or_default() > &state.start_time.elapsed() {return;}
                 let cmd_name = args[0];
                 if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name.to_ascii_lowercase()) {
                     let ctx = crate::commands::cmd::Context {
                         client: Arc::clone(&client),
-                        msg: Arc::clone(&msg_arc),
-                        info: Arc::clone(&info_arc),
+                        msg: &msg,
+                        info: &info,
                         state: Arc::clone(&state),
                     };
                     if let Err(e) = cmd.execute(ctx).await {
@@ -96,8 +94,8 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
                 }
             }
             
-            let duration = start.elapsed();
-            println!("Executed in {:?}", duration);
+            //let duration = start.elapsed();
+            //println!("Executed in {:?}", duration);
 }
 
 async fn handle_group_exp(update: GroupUpdate, state: Arc<AppState>) {
@@ -110,9 +108,9 @@ async fn handle_group_exp(update: GroupUpdate, state: Arc<AppState>) {
 }
 
 
-async fn is_privileged(sender: &str, info_arc: &Arc<MessageInfo>, config: &Arc<AppConfig>) -> bool {
-    let me = info_arc.source.is_from_me;
-    let su = if info_arc.source.sender.is_lid() {
+async fn is_privileged(sender: &str, info: &MessageInfo, config: &Arc<AppConfig>) -> bool {
+    let me = info.source.is_from_me;
+    let su = if info.source.sender.is_lid() {
     if let Ok(lock) = SUPERUSER_LID.try_read() {
         lock.as_deref() == Some(sender)
     } else {
