@@ -5,9 +5,14 @@ use std::process::Command;
 
 fn main() {
     if let Ok(output) = Command::new("rustc").arg("-V").output() {
-        if let Ok(version) = String::from_utf8(output.stdout) {
-            // Menyimpan hasilnya ke variabel environment RUSTC_VERSION
-            println!("cargo:rustc-env=RUSTC_VERSION={}", version.trim());
+        if let Ok(version_full) = String::from_utf8(output.stdout) {
+            let version = version_full
+                .split_whitespace()
+                .take(2)
+                .collect::<Vec<_>>()
+                .join(" ");
+    
+            println!("cargo:rustc-env=RUSTC_VERSION={}", version);
         }
     }
     let commands_path = Path::new("src/commands");
