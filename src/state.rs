@@ -20,7 +20,7 @@ pub struct AppState {
 impl AppState {
     pub fn load(config: Arc<AppConfig>) -> Arc<Self> {
         let start_time = Instant::now();
-        let db = sled::open("database/chat").expect("Error opening sled database");
+        let db = sled::Config::new().path("database/chat").cache_capacity(10 * 1024 * 1024).mode(sled::Mode::HighThroughput).open().expect("Errpr opening sled database");
         let settings = DashMap::new();
 
         // hydration from db to cache
