@@ -12,6 +12,8 @@ pub struct Context<'a> {
     pub msg: &'a Message,
     pub info: &'a MessageInfo,
     pub state: Arc<AppState>,
+    pub body: &'a str,
+    pub args: &'a Vec<&'a str>,
 }
 
 impl<'a> Context<'a> {
