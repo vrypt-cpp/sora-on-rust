@@ -44,7 +44,7 @@ impl AppState {
         })
     }    
 
-    pub async fn set_expiration(self: Arc<Self>, jid: String, expiration: u32) {
+    pub fn set_expiration(self: Arc<Self>, jid: String, expiration: u32) {
         if let Some(current) = self.settings.get(&jid) {
             if current.expiration == expiration {
                 return;
@@ -53,7 +53,7 @@ impl AppState {
         let jid_db = jid.clone();
         self.settings.insert(jid, ChatSettings { expiration });
         let state_clone = Arc::clone(&self);
-        tokio::spawn(async move {
+        tokio::task::spawn_blocking(move || {
             let val_bytes = expiration.to_be_bytes();
             if let Err(e) = state_clone.db.insert(jid_db, &val_bytes) {
                 log::error!("Error inserting data into sled database: {}", e);
