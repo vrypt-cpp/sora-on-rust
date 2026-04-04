@@ -29,6 +29,7 @@ cmd!(
             }
             Err(e) => {
                 println!("Error connecting to {}: {}", server_wangsaf, e);
-             }
-         }
-        });
+            }
+        }
+    }
+);
