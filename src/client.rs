@@ -19,7 +19,7 @@ pub async fn create_bot(config: Arc<AppConfig>, state: Arc<AppState>) -> anyhow:
     }
     let backend = Arc::new(SqliteStore::new(&config.session_path).await?);
     let bot = Bot::builder()
-        .skip_history_sync()
+        // .skip_history_sync()
         .with_backend(backend)
         .with_transport_factory(TokioWebSocketTransportFactory::new())
         .with_http_client(UreqHttpClient::new())
