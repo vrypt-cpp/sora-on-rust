@@ -1,9 +1,19 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use crate::config::AppConfig;
+
+pub enum ConfigKey {
+    Mode,
+    Prefixes,
+}
+
+pub enum ConfigValue {
+    Text(String),
+    List(Vec<String>),
+}
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ChatSettings {
@@ -15,6 +25,8 @@ pub struct AppState {
     pub db: sled::Db,
     pub start_time: Instant,
     pub config: Arc<AppConfig>,
+    pub mode: RwLock<String>,
+    pub prefixes: RwLock<Vec<String>>,
 }
 
 impl AppState {
@@ -40,7 +52,9 @@ impl AppState {
             settings,
             db,
             start_time,
-            config: config,
+            mode: RwLock::new(config.mode.clone()),
+            prefixes: RwLock::new(config.prefixes.clone()),
+            config,
         })
     }    
 
@@ -63,4 +77,30 @@ impl AppState {
     pub fn get_expiration(&self, jid: &str) -> u32 {
         self.settings.get(jid).map(|s| s.expiration).unwrap_or(0)
     }
+
+    pub fn get_mode(&self) -> String {
+        self.mode.read().unwrap().clone()
+    }
+
+    pub fn get_prefixes(&self) -> Vec<String> {
+        self.prefixes.read().unwrap().clone()
+    }
+
+    pub fn set_config(&self, key: ConfigKey, value: ConfigValue) -> Result<(), &'static str> {
+        match (key, value) {
+            (ConfigKey::Mode, ConfigValue::Text(val)) => {
+                let mut mode = self.mode.write().unwrap();
+                *mode = val;
+                Ok(())
+            }
+            (ConfigKey::Prefixes, ConfigValue::List(val)) => {
+                let mut prefixes = self.prefixes.write().unwrap();
+                *prefixes = val;
+                Ok(())
+            }
+            _ => Err("invalid datatype for this field"),
+        }
+    }
+
+
 }
