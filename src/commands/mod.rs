@@ -4,3 +4,6 @@ pub mod general {
     pub mod menu;
     pub mod ping;
 }
+pub mod root {
+    pub mod set;
+}
