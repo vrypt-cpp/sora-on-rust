@@ -12,7 +12,7 @@ whatsapp-rust-tokio-transport = "0.5"
 whatsapp-rust-ureq-http-client = "0.5"
 wacore = "0.5"
 waproto = "0.5"
-tokio = { version = "1.50", features = ["macros", "rt-multi-thread", "fs"] }
+tokio = { version = "1.50", features = ["macros", "rt-multi-thread", "fs", "process"] }
 log = "0.4.29"
 env_logger = "0.11.10"
 chrono = "0.4.44"
