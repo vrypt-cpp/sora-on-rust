@@ -74,8 +74,8 @@ cmd!(
         let total_cmds = COMMANDS.len();
         let total_cats = categories.len();
 
-        let mode = &ctx.state.config.mode;
-        let prefix = &ctx.state.config.prefixes;
+        let mode = &ctx.state.get_mode();
+        let prefix = &ctx.state.get_prefixes();
 
 
         let mut sys = System::new_all();

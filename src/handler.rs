@@ -68,8 +68,8 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
             }
             
             if let Some(text) = msg.text_content() {
-                let matched_prefix: Option<&String> = config.prefixes.iter().find(|p| text.starts_with(*p));
-                let prefix = match matched_prefix {
+                let prefixes = state.get_prefixes();
+                let prefix = match prefixes.iter().find(|p| text.starts_with(p.as_str())) {
                     Some(p) => p.to_string(),
                     None => return,
                 };
@@ -80,7 +80,7 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
                 if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name) {
                     let privileged = is_privileged(info.source.sender.user.as_str(), &info, &config).await;
                     let category = cmd.category();
-                    if config.mode == "self" {
+                    if state.get_mode() == "self" {
                         if !privileged {
                             println!("{}", &info.source.sender.user);
                             println!("Not privileged");
