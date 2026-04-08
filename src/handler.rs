@@ -60,61 +60,70 @@ async fn handle_connected(config: Arc<AppConfig>, client: Arc<Client>) {
 }
 
 async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, config: Arc<AppConfig>, info: MessageInfo, state: Arc<AppState> ) {
-            // println!("{:#?}", msg);
-            // let start = std::time::Instant::now();
-            if let Some(exp) = msg.get_expiration_timer() {
-                state.clone().set_expiration(info.source.chat.to_string(), exp);
-                // println!("Expiration received: {}", exp);
-            }
-            
-            if let Some(text) = msg.text_content() {
-                let prefixes = state.get_prefixes();
-                let prefix = match prefixes.iter().find(|p| text.starts_with(p.as_str())) {
-                    Some(p) => p.to_string(),
-                    None => return,
-                };
-                let cmd_name = text.strip_prefix(&prefix).unwrap_or(text).split_whitespace().next().unwrap_or("").to_lowercase();
-                // println!("{}", &info_arc.source.sender.user);
-                let msg_timestamp = Utc::now() - &info.timestamp;
-                if &msg_timestamp.to_std().unwrap_or_default() > &state.start_time.elapsed() {return;}
-                if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name) {
-                    let privileged = is_privileged(info.source.sender.user.as_str(), &info, &config).await;
-                    let category = cmd.category();
-                    if state.get_mode() == "self" {
-                        if !privileged {
-                            println!("{}", &info.source.sender.user);
-                            println!("Not privileged");
-                            return;
-                        }
-                    }
-                    if category == "root" && !privileged {
-                        println!("Permission denied");
-                        return
-                    };
-                    tokio::spawn(async move {
-                        let _ = client.chatstate().send_composing(&info.source.chat).await;
-                        let base = msg.text_content().map(|t| t.strip_prefix(&prefix).unwrap_or(t)).unwrap_or("");
-                        let args: Vec<&str> = base.split_whitespace().skip(1).collect();
-                        let body = base.strip_prefix(base.split_whitespace().next().unwrap_or("")).unwrap_or("").trim();
-                        
-                        let ctx = crate::commands::cmd::Context {
-                            client: Arc::clone(&client),
-                            msg: &msg,
-                            info: &info,
-                            state: Arc::clone(&state),
-                            args: &args,
-                            body: body,
-                        };
-                        let _ = client.chatstate().send_paused(&info.source.chat).await;
-                        if let Err(e) = cmd.execute(ctx).await {
-                            error!("Error executing command: {}", e);
-                        }
-                    });
+    println!("Incoming Message from {} ({}): {:?}", &info.push_name, &info.source.sender, &msg.text_content());
+    // println!("{:#?}", msg);
+    // let start = std::time::Instant::now();
+    if let Some(exp) = msg.get_expiration_timer() {
+        state.clone().set_expiration(info.source.chat.to_string(), exp);
+        // println!("Expiration received: {}", exp);
+    }
+    
+    if let Some(text) = msg.text_content() {
+        let prefixes = state.get_prefixes();
+        let prefix = match prefixes.iter().find(|p| text.starts_with(p.as_str())) {
+            Some(p) => p.to_string(),
+            None => return,
+        };
+        let cmd_name = text.strip_prefix(&prefix).unwrap_or(text).split_whitespace().next().unwrap_or("").to_lowercase();
+        // println!("{}", &info_arc.source.sender.user);
+        let msg_timestamp = Utc::now() - &info.timestamp;
+        if &msg_timestamp.to_std().unwrap_or_default() > &state.start_time.elapsed() {return;}
+        if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name) {
+            let privileged = is_privileged(info.source.sender.user.as_str(), &info, &config).await;
+            let category = cmd.category();
+            if state.get_mode() == "self" {
+                if !privileged {
+                    println!("{}", &info.source.sender.user);
+                    println!("Not privileged");
+                    return;
                 }
             }
-            
-            //let duration = start.elapsed();
-            //println!("Executed in {:?}", duration);
+            if category == "root" && !privileged {
+                println!("Permission denied");
+                return
+            };
+            if category == "group" {
+                if !info.source.is_group {
+                    return
+                }
+                let metadata = client.groups().get_metadata(&info.source.chat).await.unwrap();
+                let is_admin = metadata.participants.iter()
+                    .any(|p| p.jid.user == info.source.sender.user && p.is_admin);
+                if !is_admin {
+                    return;
+                }
+            };
+            tokio::spawn(async move {
+                let _ = client.chatstate().send_composing(&info.source.chat).await;
+                let base = msg.text_content().map(|t| t.strip_prefix(&prefix).unwrap_or(t)).unwrap_or("");
+                let args: Vec<&str> = base.split_whitespace().skip(1).collect();
+                let body = base.strip_prefix(base.split_whitespace().next().unwrap_or("")).unwrap_or("").trim();
+                
+                let ctx = crate::commands::cmd::Context {
+                    client: Arc::clone(&client),
+                    msg: &msg,
+                    info: &info,
+                    state: Arc::clone(&state),
+                    args: &args,
+                    body: body,
+                };
+                if let Err(e) = cmd.execute(ctx).await {
+                    error!("Error executing command: {}", e);
+                }
+                let _ = client.chatstate().send_paused(&info.source.chat).await;
+            });
+        }
+    }            
 }
 
 async fn handle_group_exp(update: GroupUpdate, state: Arc<AppState>) {
