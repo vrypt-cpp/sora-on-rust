@@ -10,22 +10,18 @@ cmd!(
         println!("{:?}", ctx.body);
         let number: String = ctx.body.chars().filter(|c| c.is_ascii_digit()).collect();
         let mut participant = format!("{}@s.whatsapp.net", number);
-        if number.is_empty() {
-            if let Some(ext_msg) = &ctx.msg.extended_text_message {
-                if let Some(context) = &ext_msg.context_info {
-                    if let Some(p) = &context.participant {
+        if number.is_empty()
+            && let Some(ext_msg) = &ctx.msg.extended_text_message
+                && let Some(context) = &ext_msg.context_info
+                    && let Some(p) = &context.participant {
                         participant = p.clone()
                     }
-                }
-            }
-        }
-        let mut new_members: Vec<Jid> = vec![format!("{}", participant).parse()?];
+        let mut new_members: Vec<Jid> = vec![participant.to_string().parse()?];
         println!("{:?}", new_members);
-        if new_members[0].is_lid() {
-            if let Some(pn) = ctx.client.get_phone_number_from_lid(new_members[0].user_base()).await {
+        if new_members[0].is_lid()
+            && let Some(pn) = ctx.client.get_phone_number_from_lid(new_members[0].user_base()).await {
                 new_members[0] = format!("{}@s.whatsapp.net", pn).parse()?;
             }
-        }
         if new_members[0].user.is_empty() {
             ctx.react("❔").await?;
             return Ok(());

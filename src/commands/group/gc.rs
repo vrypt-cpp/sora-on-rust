@@ -20,7 +20,7 @@ cmd!(
                 lock(group_jid, client, true).await
             },
             "link" => {
-                ctx.reply(format!("{}", get_link(group_jid, client).await).as_str()).await?;
+                ctx.reply(get_link(group_jid, client).await.to_string().as_str()).await?;
             },
             _ => {
                 ctx.react("❔").await?;
@@ -30,7 +30,7 @@ cmd!(
 );
 
 async fn get_link(group_jid: &Jid, client: Arc<Client>) -> String {
-    let link = client.groups().get_invite_link(&group_jid, false).await;
+    let link = client.groups().get_invite_link(group_jid, false).await;
     match link {
         Ok(link) => link,
         Err(e) => e.to_string()
@@ -38,6 +38,6 @@ async fn get_link(group_jid: &Jid, client: Arc<Client>) -> String {
 }
 
 async fn lock(group_jid: &Jid, client: Arc<Client>, lock: bool) {
-    let _ = client.groups().set_announce(&group_jid, lock).await;
+    let _ = client.groups().set_announce(group_jid, lock).await;
 
 }

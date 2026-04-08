@@ -9,7 +9,7 @@ cmd!(
         let command = ctx.body;
         let output = Command::new("bash")
         .arg("-c")
-        .arg(&command)
+        .arg(command)
         .output()
         .await?;
 
@@ -18,6 +18,6 @@ cmd!(
             result = String::from_utf8_lossy(&output.stderr)
         }
 
-        ctx.reply(&result.trim()).await?;
+        ctx.reply(result.trim()).await?;
     }
 );

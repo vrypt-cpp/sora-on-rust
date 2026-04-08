@@ -7,11 +7,10 @@ pub trait MessageExt {
 
 impl MessageExt for Message {
     fn get_expiration_timer(&self) -> Option<u32> {
-        if let Some(proto) = &self.protocol_message {
-            if let Some(exp) = proto.ephemeral_expiration {
+        if let Some(proto) = &self.protocol_message
+            && let Some(exp) = proto.ephemeral_expiration {
                 return Some(exp);
             }
-        }
 
         if self.conversation.is_some() {
             return Some(0);

@@ -38,12 +38,11 @@ async fn handle_connected(config: Arc<AppConfig>, client: Arc<Client>) {
         if found_lid.is_none() {
             match client.contacts().get_info(&[su_pn.as_str()]).await {
                 Ok(contacts) => {
-                    if let Some(contact) = contacts.into_iter().next() {
-                        if let Some(lid) = contact.lid {
+                    if let Some(contact) = contacts.into_iter().next()
+                        && let Some(lid) = contact.lid {
                             found_lid = Some(lid.user);
                             println!("{:?}",&found_lid);
                         }
-                    }
                 }
                 Err(e) => log::error!("Unable retrieve contact info from server: {}", e),
             }
@@ -76,18 +75,17 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
         };
         let cmd_name = text.strip_prefix(&prefix).unwrap_or(text).split_whitespace().next().unwrap_or("").to_lowercase();
         // println!("{}", &info_arc.source.sender.user);
-        let msg_timestamp = Utc::now() - &info.timestamp;
-        if &msg_timestamp.to_std().unwrap_or_default() > &state.start_time.elapsed() {return;}
+        let msg_timestamp = Utc::now() - info.timestamp;
+        if msg_timestamp.to_std().unwrap_or_default() > state.start_time.elapsed() {return;}
         if let Some(cmd) = crate::commands::cmd::COMMAND_MAP.get(&cmd_name) {
             let privileged = is_privileged(info.source.sender.user.as_str(), &info, &config).await;
             let category = cmd.category();
-            if state.get_mode() == "self" {
-                if !privileged {
+            if state.get_mode() == "self"
+                && !privileged {
                     println!("{}", &info.source.sender.user);
                     println!("Not privileged");
                     return;
                 }
-            }
             if category == "root" && !privileged {
                 println!("Permission denied");
                 return
@@ -115,7 +113,7 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
                     info: &info,
                     state: Arc::clone(&state),
                     args: &args,
-                    body: body,
+                    body,
                 };
                 if let Err(e) = cmd.execute(ctx).await {
                     error!("Error executing command: {}", e);
@@ -127,11 +125,8 @@ async fn handle_message(msg: waproto::whatsapp::Message, client: Arc<Client>, co
 }
 
 async fn handle_group_exp(update: GroupUpdate, state: Arc<AppState>) {
-    match &update.action {
-        GroupNotificationAction::Ephemeral{expiration, trigger: _} => {
-            state.set_expiration(update.group_jid.to_string(), *expiration);
-        }
-        _ => {}
+    if let GroupNotificationAction::Ephemeral{expiration, trigger: _} = &update.action {
+        state.set_expiration(update.group_jid.to_string(), *expiration);
     }
 }
 

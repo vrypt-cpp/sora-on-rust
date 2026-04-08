@@ -4,8 +4,8 @@ use std::process::Command;
 
 
 fn main() {
-    if let Ok(output) = Command::new("rustc").arg("-V").output() {
-        if let Ok(version_full) = String::from_utf8(output.stdout) {
+    if let Ok(output) = Command::new("rustc").arg("-V").output()
+        && let Ok(version_full) = String::from_utf8(output.stdout) {
             let version = version_full
                 .split_whitespace()
                 .take(2)
@@ -14,7 +14,6 @@ fn main() {
     
             println!("cargo:rustc-env=RUSTC_VERSION={}", version);
         }
-    }
     let commands_path = Path::new("src/commands");
     let content = generate_mod_content(commands_path);
     let mod_file = commands_path.join("mod.rs");

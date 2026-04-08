@@ -38,15 +38,13 @@ impl AppState {
         let settings = DashMap::new();
         let http_client = reqwest::Client::builder().redirect(reqwest::redirect::Policy::default()).cookie_store(true).build().unwrap();
         // hydration from db to cache
-        for item in db.iter() {
-            if let Ok((key, value)) = item {
-                let jid = String::from_utf8_lossy(&key).to_string();
+        for (key, value) in db.iter().flatten() {
+            let jid = String::from_utf8_lossy(&key).to_string();
 
-                if value.len() == 4 {
-                    let bytes: [u8; 4] = value.as_ref().try_into().unwrap();
-                    let expiration = u32::from_be_bytes(bytes);
-                    settings.insert(jid, ChatSettings { expiration });
-                }
+            if value.len() == 4 {
+                let bytes: [u8; 4] = value.as_ref().try_into().unwrap();
+                let expiration = u32::from_be_bytes(bytes);
+                settings.insert(jid, ChatSettings { expiration });
             }
         }
 
@@ -63,11 +61,10 @@ impl AppState {
     }    
 
     pub fn set_expiration(self: Arc<Self>, jid: String, expiration: u32) {
-        if let Some(current) = self.settings.get(&jid) {
-            if current.expiration == expiration {
+        if let Some(current) = self.settings.get(&jid)
+            && current.expiration == expiration {
                 return;
             }
-        }
         let jid_db = jid.clone();
         self.settings.insert(jid, ChatSettings { expiration });
         let state_clone = Arc::clone(&self);

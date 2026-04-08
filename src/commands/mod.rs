@@ -10,7 +10,7 @@ pub mod general {
 pub mod group {
     pub mod add;
     pub mod demote;
-    pub mod group;
+    pub mod gc;
     pub mod kick;
     pub mod promote;
 }

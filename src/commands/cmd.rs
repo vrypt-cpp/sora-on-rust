@@ -40,7 +40,7 @@ impl<'a> Context<'a> {
             ..Default::default()
         };
         
-        Ok(self.client.send_message(self.info.source.chat.clone(), reaction).await?)
+        self.client.send_message(self.info.source.chat.clone(), reaction).await
     }
     pub async fn reply(&self, text: &str) -> anyhow::Result<String> {
         let msg_id = crate::send_msg!(
@@ -73,18 +73,18 @@ macro_rules! cmd {
         pub struct $struct_name;
 
         #[async_trait::async_trait]
-        impl crate::commands::cmd::Command for $struct_name {
+        impl $crate::commands::cmd::Command for $struct_name {
             fn name(&self) -> &str { $name }
             fn aliases(&self) -> &[&str] { &[$($alias),*] }
             fn category(&self) -> &str { $cat }
-            async fn execute(&self, $ctx: crate::commands::cmd::Context<'_> ) -> anyhow::Result<()> {
+            async fn execute(&self, $ctx: $crate::commands::cmd::Context<'_> ) -> anyhow::Result<()> {
                 $body;
                 Ok(())
             }
         }
 
-        #[linkme::distributed_slice(crate::commands::cmd::COMMANDS)]
-        static COMMAND: &(dyn crate::commands::cmd::Command + Sync) = &$struct_name;
+        #[linkme::distributed_slice($crate::commands::cmd::COMMANDS)]
+        static COMMAND: &(dyn $crate::commands::cmd::Command + Sync) = &$struct_name;
     };
 }
 

@@ -9,14 +9,13 @@ cmd!(
     category: "group",
     execute: |ctx| {
         let mut targets: Vec<Jid> = Vec::new();
-        if let Some(ext_msg) = &ctx.msg.extended_text_message {
-            if let Some(context) = &ext_msg.context_info {
+        if let Some(ext_msg) = &ctx.msg.extended_text_message
+            && let Some(context) = &ext_msg.context_info {
                 if ctx.args.is_empty() {
-                    if let Some(participant) = &context.participant {
-                        if let Ok(jid) = participant.parse::<Jid>() {
+                    if let Some(participant) = &context.participant
+                        && let Ok(jid) = participant.parse::<Jid>() {
                             targets.push(jid);
                         }
-                    }
                 } else {
                     for mention in &context.mentioned_jid {
                         if let Ok(jid) = mention.parse::<Jid>() {
@@ -25,7 +24,6 @@ cmd!(
                     }
                 }
             }
-        }
 
         println!("{:?}", targets);
 

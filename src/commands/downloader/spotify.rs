@@ -24,7 +24,7 @@ cmd!(
         let mut search_client = ctx.state.spotify_search_client.write().await;
         let tracks = search_client.tracks(ctx.body, 1).await?;
         let mut track = String::new();
-        if let Some(result) = tracks.get(0) {
+        if let Some(result) = tracks.first() {
             track = result.uri.clone();
         }
         let song_url = format!("https://open.spotify.com/track/{}", track.split(':').nth(2).unwrap_or(""));

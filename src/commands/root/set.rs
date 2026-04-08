@@ -45,11 +45,10 @@ cmd!(
                 prefixes: state.get_prefixes(),
             };
 
-            if let Ok(toml_string) = toml::to_string(&updated_config) {
-                if let Err(e) = tokio::fs::write("Config.toml", toml_string).await {
+            if let Ok(toml_string) = toml::to_string(&updated_config)
+                && let Err(e) = tokio::fs::write("Config.toml", toml_string).await {
                     eprintln!("unable write config to Config.toml: {}", e);
                 }
-            }
         });
     }
 );
