@@ -30,7 +30,7 @@ rand = { version = "0.10.0", features = ["std"]}
 spotapi = "0.2.4"
 
 [profile.release]
-opt-level = "z"
+opt-level = 3
 lto = "fat"
 codegen-units = 1
 strip = true
