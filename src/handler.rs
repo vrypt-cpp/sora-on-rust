@@ -89,6 +89,21 @@ async fn handle_message(
     }
 
     if let Some(text) = msg.text_content() {
+        let ctx_int = crate::commands::cmd::Context {
+            client: Arc::clone(&client),
+            msg: &msg,
+            info: &info,
+            state: Arc::clone(&state),
+            args: &Vec::new(),
+            body: text,
+        };
+
+        for interceptor in crate::commands::cmd::INTERCEPTORS {
+            if let Ok(true) = interceptor.intercept(ctx_int.clone()).await {
+                return;
+            }
+        }
+
         let prefixes = state.get_prefixes();
         let prefix = match prefixes.iter().find(|p| text.starts_with(p.as_str())) {
             Some(p) => p.to_string(),
