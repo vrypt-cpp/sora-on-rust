@@ -40,7 +40,7 @@ impl AppState {
             .cache_capacity(10 * 1024 * 1024)
             .mode(sled::Mode::HighThroughput)
             .open()
-            .expect("Errpr opening sled database");
+            .expect("Error opening sled database")
         let settings = DashMap::new();
         let last_messages = DashMap::new();
         let mut headers = HeaderMap::new();
