@@ -162,11 +162,10 @@ async fn handle_message(
                     if !info.source.is_group {
                         return;
                     }
-                    let metadata = client
-                        .groups()
-                        .get_metadata(&info.source.chat)
-                        .await
-                        .unwrap();
+                    let metadata = match client.groups().get_metadata(&info.source.chat).await {
+                        Ok(m) => m,
+                        Err(_) => return,
+                    };
                     let is_admin = metadata
                         .participants
                         .iter()
