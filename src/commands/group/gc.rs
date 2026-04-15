@@ -9,7 +9,10 @@ cmd!(
     aliases: ["gc"],
     category: "group",
     execute: |ctx| {
-        let subcommand = ctx.args[0];
+        let Some(subcommand) = ctx.args.get(0) else {
+            ctx.react("❔").await?;
+            return Ok(());
+        };
         let group_jid = &ctx.info.source.chat;
         let client = ctx.client.clone();
         match subcommand {
