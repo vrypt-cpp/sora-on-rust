@@ -49,8 +49,8 @@ fn get_disk_info() -> String {
     let mut total = 0;
     let mut used = 0; 
     for disk in disks.list() {
-        total = disk.total_space()/1024/1024/1024;
-        used = total - disk.available_space()/1024/1024/1024;
+        total += disk.total_space() / 1024/1024/1024;
+        used += (disk.total_space() - disk.available_space()) / 1024/1024/1024;
     }
     format!("{}GB / {}GB", used, total).to_string()
 }
