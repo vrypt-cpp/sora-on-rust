@@ -81,7 +81,7 @@ cmd!(
         let mut sys = System::new_all();
         sys.refresh_all();
         let mem_usage = get_memory_usage(&sys);
-        let cpu = sys.cpus()[0].brand();
+        let cpu = sys.cpus().first().map(|c| c.brand()).unwrap_or("Unknown");
         let physical_cores = System::physical_core_count().unwrap_or(0);
         let logical_cores = sys.cpus().len();
         let total_mem = get_total_mem(&sys);
