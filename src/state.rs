@@ -40,7 +40,7 @@ impl AppState {
             .cache_capacity(10 * 1024 * 1024)
             .mode(sled::Mode::HighThroughput)
             .open()
-            .expect("Error opening sled database")
+            .expect("Error opening sled database");
         let settings = DashMap::new();
         let last_messages = DashMap::new();
         let mut headers = HeaderMap::new();
@@ -54,8 +54,6 @@ impl AppState {
             .pool_max_idle_per_host(10)
             .build()
             .unwrap();
-        // let http_client = reqwest::Client::new();
-        // hydration from db to cache
         for (key, value) in db.iter().flatten() {
             let jid = String::from_utf8_lossy(&key).to_string();
 
@@ -94,6 +92,7 @@ impl AppState {
             }
         });
     }
+
     pub fn get_expiration(&self, jid: &str) -> u32 {
         self.settings.get(jid).map(|s| s.expiration).unwrap_or(0)
     }
