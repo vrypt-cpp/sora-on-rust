@@ -15,7 +15,7 @@ cmd!(
         };
         let group_jid = &ctx.info.source.chat;
         let client = ctx.client.clone();
-        match subcommand {
+        match subcommand.as_str() {
             "open" => {
                 lock(group_jid, client, false).await
             },
@@ -42,5 +42,4 @@ async fn get_link(group_jid: &Jid, client: Arc<Client>) -> String {
 
 async fn lock(group_jid: &Jid, client: Arc<Client>, lock: bool) {
     let _ = client.groups().set_announce(group_jid, lock).await;
-
 }
